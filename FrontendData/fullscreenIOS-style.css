@@ -1,0 +1,93 @@
+/* Minimal iOS-only overrides. Reuses most of FrontendData/style.css */
+
+/* Base page: no chrome, no scroll */
+html, body {
+  height: 100%;
+  margin: 0;
+  background: #000;
+  color: #fff;
+  overflow: hidden;
+  touch-action: none;
+}
+
+/* Stage fills the safe-area-adjusted viewport */
+#stage{
+  position: fixed;
+  inset: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display: grid;
+  place-items: center;
+  width: 100vw;
+  height: 100dvh; /* dynamic on iOS */
+  background: #000;
+}
+
+/* Container uses your existing Unity selectors */
+#unity-container{
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+/* Canvas wrapper anchors the fullscreen footer and prevents inline-gap */
+.canvas-wrap{
+  position: relative;
+  line-height: 0;
+  margin: 0 auto;
+}
+
+/* Force landscape presentation:
+   In portrait, rotate the whole game 90deg and keep it centered. */
+.rotate-wrap{
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform-origin: center center;
+  will-change: transform, width, height;
+}
+/* In landscape (native), no rotation. Fill the viewport. */
+.is-landscape .rotate-wrap{
+  width: 100dvw;
+  height: 100dvh;
+  transform: translate(-50%, -50%);
+}
+
+/* In portrait, swap dimensions, rotate 90°, and center. */
+.is-portrait .rotate-wrap{
+  width: 100dvh;           /* swap */
+  height: 100dvw;          /* swap */
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+/* Loading bar stays centered regardless of rotation */
+#unity-loading-bar{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%,-50%);
+  display: none;
+}
+
+/* Footer exists so Unity won't error, but button is hidden on iOS */
+#unity-footer{ position: absolute; right: 12px; bottom: 12px; pointer-events: none; }
+#unity-fullscreen-button{ display: none !important; }
+
+/* Canvas visual baseline */
+#unity-canvas{
+  background: #231F20;
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+/* Prevent any other layout from leaking in */
+.site-header, .site-footer, .content-section { display: none !important; }
+
+/* Prevent accidental selection, zoom, or callouts */
+* {
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}

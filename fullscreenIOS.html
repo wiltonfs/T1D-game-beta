@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Stem Cell Explorer — iOS Fullscreen</title>
+
+  <!-- Reuse your base styles first -->
+  <link rel="stylesheet" href="FrontendData/style.css" />
+  <!-- Minimal overrides for this page -->
+  <link rel="stylesheet" href="FrontendData/fullscreenIOS-style.css" />
+</head>
+<body class="ios-only">
+  <main id="stage" role="main" aria-label="Game">
+    <!-- Rotate wrapper: turned 90° in portrait to force landscape layout -->
+    <div id="rotateWrap" class="rotate-wrap">
+      <div id="unity-container">
+        <div class="canvas-wrap" id="canvasWrap">
+          <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
+
+          <!-- Footer exists but fullscreen button is hidden on iOS -->
+          <div id="unity-footer">
+            <button id="unity-fullscreen-button" type="button" aria-hidden="true" tabindex="-1"></button>
+          </div>
+        </div>
+
+        <div id="unity-loading-bar" role="progressbar" aria-label="Loading game">
+          <div id="unity-logo"></div>
+          <div id="unity-progress-bar-empty">
+            <div id="unity-progress-bar-full"></div>
+          </div>
+        </div>
+        <div id="unity-warning" aria-live="assertive"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+  const BASE_W = 960;            // match your Unity build
+  const BASE_H = 600;            // match your Unity build
+  const DPR    = Math.max(1, Math.min(2, window.devicePixelRatio || 1)); // cap for iOS perf
+
+  const vv = () => {
+    const v = window.visualViewport;
+    return {
+      w: Math.floor((v?.width)  || window.innerWidth  || 1),
+      h: Math.floor((v?.height) || window.innerHeight || 1)
+    };
+  };
+
+  const rotateWrap = document.getElementById('rotateWrap');
+  const canvasWrap = document.getElementById('canvasWrap');
+  const canvas     = document.getElementById('unity-canvas');
+  const loadingBar = document.getElementById('unity-loading-bar');
+  const progressBarFull = document.getElementById('unity-progress-bar-full');
+  const warningBanner = document.getElementById('unity-warning');
+
+  function unityShowBanner(msg, type) {
+    function updateBannerVisibility() {
+      warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+    }
+    const div = document.createElement('div');
+    div.innerHTML = msg;
+    warningBanner.appendChild(div);
+    if (type === 'error') div.style = 'background: red; padding: 10px;';
+    else {
+      if (type === 'warning') div.style = 'background: yellow; padding: 10px;';
+      setTimeout(() => { warningBanner.removeChild(div); updateBannerVisibility(); }, 5000);
+    }
+    updateBannerVisibility();
+  }
+
+  function layout() {
+    const { w, h } = vv();
+    const portrait = h >= w;
+
+    document.body.classList.toggle('is-portrait', portrait);
+    document.body.classList.toggle('is-landscape', !portrait);
+
+    // Available screen-space for the GAME BOX after rotation handling.
+    // In portrait we present landscape, so swap the measuring box.
+    const availW = portrait ? h : w;
+    const availH = portrait ? w : h;
+
+    // Contain-scale to preserve aspect (no stretch).
+    const scale  = Math.min(availW / BASE_W, availH / BASE_H);
+    const targetW = Math.floor(BASE_W * scale);
+    const targetH = Math.floor(BASE_H * scale);
+
+    // CSS pixels for layout
+    canvasWrap.style.width  = targetW + 'px';
+    canvasWrap.style.height = targetH + 'px';
+    canvas.style.width      = targetW + 'px';
+    canvas.style.height     = targetH + 'px';
+
+    // Backing store for crispness without huge VRAM
+    canvas.width  = Math.floor(targetW * DPR);
+    canvas.height = Math.floor(targetH * DPR);
+  }
+
+  // iOS viewport change hooks
+  ['resize','orientationchange','pageshow'].forEach(evt =>
+    window.addEventListener(evt, () => requestAnimationFrame(layout))
+  );
+  window.visualViewport?.addEventListener('resize', layout);
+  window.visualViewport?.addEventListener('scroll', layout);
+  document.addEventListener('DOMContentLoaded', layout);
+
+  // --- Unity boot (same as before, keep your filenames) ---
+  const buildUrl = "Build";
+  const loaderUrl = buildUrl + "/V1.0_B2.loader.js";
+  const config = {
+    dataUrl: buildUrl + "/V1.0_B2.data",
+    frameworkUrl: buildUrl + "/V1.0_B2.framework.js",
+    codeUrl: buildUrl + "/V1.0_B2.wasm",
+    streamingAssetsUrl: "StreamingAssets",
+    companyName: "Felix Wilton",
+    productName: "Stem Cell Explorer",
+    productVersion: "1.0",
+    showBanner: unityShowBanner
+  };
+
+  loadingBar.style.display = "block";
+  const script = document.createElement("script");
+  script.src = loaderUrl;
+  script.onload = () => {
+    createUnityInstance(canvas, config, (progress) => {
+      progressBarFull.style.width = (100 * progress) + "%";
+    }).then(() => {
+      loadingBar.style.display = "none";
+      layout(); // final settle
+    }).catch((message) => { alert(message); });
+  };
+  document.body.appendChild(script);
+</script>
+
+</body>
+</html>

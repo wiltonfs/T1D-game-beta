@@ -1,0 +1,292 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Stem Cell Explorer</title>
+  <link rel="icon" href="FrontendData/favicon.ico" />
+  <link rel="stylesheet" href="FrontendData/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <h1 class="site-title">Stem Cell Explorer</h1>
+    </div>
+  </header>
+
+  <main class="site-main">
+    <!-- Game (full-bleed) -->
+    <section class="section game-section">
+      <div class="container full-bleed">
+        <div class="game-shell">
+          <div class="rotate-notice" id="rotateNotice" aria-live="polite">
+            <div class="rotate-content">
+              <p id="rotateText">Rotate to landscape for the best experience</p>
+              <button id="rotateOk" type="button" class="btn">OK</button>
+            </div>
+          </div>
+
+          <div id="unity-container" class="unity-desktop">
+            <div class="canvas-wrap" id="canvasWrap">
+              <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
+
+              <!-- Fullscreen button anchored to canvas bottom-right -->
+              <div id="unity-footer">
+                <button id="unity-fullscreen-button" title="Fullscreen" aria-label="Enter fullscreen" type="button"></button>
+              </div>
+            </div>
+
+            <div id="unity-loading-bar" role="progressbar" aria-label="Loading game">
+              <div id="unity-logo"></div>
+              <div id="unity-progress-bar-empty">
+                <div id="unity-progress-bar-full"></div>
+              </div>
+            </div>
+            <div id="unity-warning" aria-live="assertive"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="feedback-link-wrap">
+      <a href="https://forms.gle/ChVkJeZU8ZdWyv6k8" target="_blank" rel="noopener" class="feedback-link">
+        Feedback Form
+      </a>
+    </div>
+
+    <!-- About the project -->
+    <section class="section content-section">
+      <div class="container narrow">
+        <p>
+          Stem Cell Explorer is a simple WebGL game for Chromebooks and iPads. Players solve a
+          morphogen codebreaker to unlock animated cells, each with short descriptions that connect
+          to real biology concepts such as stem cells, differentiation, and morphogen pathways.
+        </p>
+        <p>
+          Controls are tap or click only. If a minigame feels too hard, players can skip and try a
+          different one. Completion unlocks a new cell in the Incubator, where cells chirp & dance.
+          Cells are also recorded in the Journal, where players can read interesting facts.
+        </p>
+      </div>
+    </section>
+
+    <!-- Team photos -->
+    <section class="section content-section">
+      <div class="container">
+        <div class="grid-2">
+          <figure class="headshot">
+            <img src="FrontendData/katarina-headshot.jpg" alt="Katarina Zosel headshot" />
+          </figure>
+          <figure class="headshot">
+            <img src="FrontendData/felix-headshot.jpg" alt="Felix Wilton headshot" />
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- Founders text -->
+    <section class="section content-section">
+      <div class="container narrow">
+        <p>
+          The project communicates the research carried out at BC Children's Hospital in a fun and accessible way.
+          The game is geared for classroom demos and easy digital distribution. We sought to develop a small, educational
+          experience focused on the scientific method, cell types, and differentiation pathways.
+        </p>
+        <p>
+          Our goal is a clean, low-friction game that teachers can launch in a browser without setup.
+          We keep art playful, interactions lightweight, and science accurate.
+        </p>
+      </div>
+    </section>
+
+    <!-- Copyright and version -->
+    <section class="section copyright-section">
+      <div class="container copyright-container">
+        <p>Frontend version 1.2</p>
+        <p>© 2025 Felix Wilton & Katarina Zosel. All Rights Reserved.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <nav class="link-row">
+        <a class="link" href="https://github.com/wiltonfs/stem-cell-game-demo" target="_blank" rel="noopener">GitHub Repository</a>
+        <a class="link" href="https://wiltonfs.github.io/T1D-game-prototype/" target="_blank" rel="noopener">First Prototype</a>
+        <a class="link" href="https://www.lynnlab.com/" target="_blank" rel="noopener">Katarina Zosel</a>
+        <a class="link" href="https://wiltonfs.github.io/" target="_blank" rel="noopener">Felix Wilton</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    // ========= Device helpers =========
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isMobile = isAndroid || isIOS;
+    const maxAspect = 1.4; // width : height must be >= 1.4
+    const isLandscape = () => (window.innerWidth || 0) > (window.innerHeight || 0);
+
+    // ========= DOM refs =========
+    const container = document.querySelector("#unity-container");
+    const canvasWrap = document.querySelector("#canvasWrap");
+    const canvas = document.querySelector("#unity-canvas");
+    const loadingBar = document.querySelector("#unity-loading-bar");
+    const progressBarFull = document.querySelector("#unity-progress-bar-full");
+    const fullscreenButton = document.querySelector("#unity-fullscreen-button");
+    const warningBanner = document.querySelector("#unity-warning");
+    const rotateNotice = document.getElementById("rotateNotice");
+    const rotateText = document.getElementById("rotateText");
+    const rotateOk = document.getElementById("rotateOk");
+
+    // ========= Rotate prompt =========
+    let rotateDismissed = false;
+    function setRotateMessage(){
+      rotateText.textContent = isAndroid
+        ? "Tap fullscreen for the best experience"
+        : "Rotate to landscape for the best experience";
+    }
+    rotateOk.addEventListener("click", () => {
+      rotateDismissed = true;
+      rotateNotice.style.display = "none";
+    });
+    setRotateMessage();
+
+    // ========= Unity banner =========
+    function unityShowBanner(msg, type) {
+      function updateBannerVisibility() {
+        warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+      }
+      const div = document.createElement('div');
+      div.innerHTML = msg;
+      warningBanner.appendChild(div);
+      if (type === 'error') div.style = 'background: red; padding: 10px;';
+      else {
+        if (type === 'warning') div.style = 'background: yellow; padding: 10px;';
+        setTimeout(function () {
+          warningBanner.removeChild(div);
+          updateBannerVisibility();
+        }, 5000);
+      }
+      updateBannerVisibility();
+    }
+
+    // ========= Unity config =========
+    var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/bb0d9ecdb05db3e84da20bd14a4f84dc.loader.js";
+      var config = {
+        dataUrl: buildUrl + "/c039daced349c0c679777af582e3009b.data.br",
+        frameworkUrl: buildUrl + "/4a35eb6fc599db4dcd1a4e7f029b4ebd.framework.js.br",
+        codeUrl: buildUrl + "/89e84a06fba93b9ef9a8e8ab24db0472.wasm.br",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "Felix Wilton",
+        productName: "Stem Cell Zoo",
+        productVersion: "2.0",
+        showBanner: unityShowBanner,
+      };
+
+    // ========= Layout helpers =========
+    let inFullscreen = false;
+    let unityInstanceGlobal = null;
+
+    function fitCanvasToViewport(){
+      const vw = Math.max(1, window.innerWidth || document.documentElement.clientWidth);
+      const vh = Math.max(1, window.innerHeight || document.documentElement.clientHeight);
+      const height = Math.min(vh, Math.floor(vw / maxAspect));
+      const width  = vw;
+      canvas.style.width = width + "px";
+      canvas.style.height = height + "px";
+      canvasWrap.style.width = width + "px";
+      canvasWrap.style.height = height + "px";
+    }
+
+    function sizeCanvasToContainer() {
+      if (inFullscreen) { fitCanvasToViewport(); return; }
+
+      const shell = document.querySelector(".game-shell");
+      const rect = shell.getBoundingClientRect();
+      const w = Math.floor(rect.width);
+      const h = Math.floor(rect.height);
+
+      const targetHeight = Math.min(h, Math.floor(w / maxAspect));
+      const finalW = Math.floor(targetHeight * maxAspect);
+      const finalH = Math.floor(finalW / maxAspect);
+
+      canvas.style.width = finalW + "px";
+      canvas.style.height = finalH + "px";
+      canvasWrap.style.width = finalW + "px";
+      canvasWrap.style.height = finalH + "px";
+
+      const meetsAspect = finalW >= maxAspect * finalH;
+      const showRotate = (isMobile && !isLandscape()) || !meetsAspect;
+      rotateNotice.style.display = (!rotateDismissed && showRotate) ? "flex" : "none";
+    }
+
+    window.addEventListener("resize", sizeCanvasToContainer);
+    window.addEventListener("orientationchange", () => setTimeout(sizeCanvasToContainer, 300));
+
+    // ========= Fullscreen state handling =========
+    document.addEventListener("fullscreenchange", () => {
+      inFullscreen = !!document.fullscreenElement;
+      document.body.classList.toggle("fs-active", inFullscreen);
+      if (inFullscreen) fitCanvasToViewport();
+      else sizeCanvasToContainer();
+
+      if (unityInstanceGlobal && !isMobile) {
+        unityInstanceGlobal.SetFullscreen(inFullscreen ? 1 : 0);
+      }
+    });
+
+    // ========= Boot Unity =========
+    loadingBar.style.display = "block";
+
+    const script = document.createElement("script");
+    script.src = loaderUrl;
+    script.onload = () => {
+      createUnityInstance(canvas, config, (progress) => {
+        progressBarFull.style.width = 100 * progress + "%";
+      }).then((unityInstance) => {
+        loadingBar.style.display = "none";
+        unityInstanceGlobal = unityInstance;
+        sizeCanvasToContainer();
+
+        // Fullscreen: Android and Desktop. Hide on iOS.
+        if (isAndroid || !isMobile) {
+          fullscreenButton.style.display = "block";
+          fullscreenButton.onclick = async () => {
+            try {
+              if (isAndroid) {
+                const elem = canvas;
+                if (elem.requestFullscreen) await elem.requestFullscreen({ navigationUI: 'hide' });
+                else if (elem.webkitRequestFullscreen) await elem.webkitRequestFullscreen();
+                if (screen.orientation && screen.orientation.lock) {
+                  await screen.orientation.lock('landscape').catch(() => {});
+                }
+              } else {
+                if (document.fullscreenElement) {
+                  await document.exitFullscreen().catch(()=>{});
+                } else {
+                  if (container.requestFullscreen) await container.requestFullscreen();
+                  else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+                }
+              }
+            } catch (e) {
+              console.log("Fullscreen/orientation failed:", e);
+            }
+          };
+        } else {
+          fullscreenButton.style.display = "none";
+        }
+      }).catch((message) => {
+        alert(message);
+      });
+    };
+    document.body.appendChild(script);
+
+    // Initial layout
+    requestAnimationFrame(sizeCanvasToContainer);
+  </script>
+</body>
+</html>
